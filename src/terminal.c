@@ -1,11 +1,13 @@
 #include "terminal.h"
 
+struct termios orig_term_attrs;
+
 void disable_raw_mode(void) {
   // Set the previous terminal attributes back, before updating.
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_term_attrs);
 }
 
-void enable_raw_mode(struct termios _term) {
+void enable_raw_mode(void) {
   struct termios term_attrs;
   // Load the terminal attributes to "orig_term_attrs"
   tcgetattr(STDIN_FILENO, &orig_term_attrs);

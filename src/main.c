@@ -53,7 +53,7 @@ main (gint   argc,
   // Character to terminal keys from
   char ch = 0;
 
-  enable_raw_mode(orig_term_attrs);
+  enable_raw_mode();
 
   g_print("MAIN: Starting thread\n");
   // Thread Setup
