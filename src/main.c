@@ -22,65 +22,17 @@
  *
  * SPDX-License-Identifier: MIT
  */
-
-#include "config.h"
+#include "terminal.h"
 
 #include <glib.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <unistd.h>
-#include <termios.h>
-#include <stdio.h>
 
-struct termios orig_term_attrs;
+gpointer *run_thread(gboolean*);
 
-void disable_raw_mode(void);
-
-void disable_raw_mode(void) {
-  // Set the previous terminal attributes back, before updating.
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_term_attrs);
-}
-
-void enable_raw_mode(void);
-
-void enable_raw_mode(void) {
-  struct termios term_attrs;
-  // Load the terminal attributes to "orig_term_attrs"
-  tcgetattr(STDIN_FILENO, &orig_term_attrs);
-  // Let's tell the program to run "disable_raw_mode" on exit so we don't lock
-  // the terminal after the program exit.
-  atexit(disable_raw_mode);
-
-  // Termios terminal attributes, set as "orig" ones.
-  term_attrs = orig_term_attrs;
-
-  // --- EXPLANATION OF STATEMENT IN NEXT LINE ---
-  //
-  // There's two things happening.
-  // First, ECHO is the 4th last bit in the 32-bit terminal attribute flag,
-  // which is "00000000000000000000000000001000"
-  // Second, the '~' operator is "bit-wise NOT", which will convert it to
-  // "11111111111111111111111111110111", which on bit-wise and with a terminal
-  // attribute will just disable echo for terminal, as every other bit will
-  // retain it's current values.
-  //
-  //
-  // --- ABOUT term_attrs.c_lflag STRUCTURE ---
-  // The `c_lflag` is for "local_flags". Consider it as miscellaneous flags
-  // after `c_iflags` (input), `c_oflags` (output), and `c_cflag` (control).
-  term_attrs.c_lflag &= ~(ECHO | ICANON);
-  // Set the flags
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &term_attrs);
-}
-
-gpointer *run_thread(gpointer*);
-
-gpointer *run_thread(gpointer *_nodata) {
-  int maxval = 20;
-  int i = 0;
+gpointer *run_thread(gboolean *flag) {
+  gint i = 1;
   g_print("TH: Thread started.\n");
-  while (i <= maxval) {
-    g_print("\r%ds remaining", maxval - i);
+  while (!(*flag)) {
+    g_print("\rTH: REPEAT %d", i);
     g_usleep(1000 * 1000);
     i += 1;
   }
@@ -92,26 +44,34 @@ gint
 main (gint   argc,
       gchar *argv[])
 {
+  // Flag to stop the thread
+  gboolean stop_flag = FALSE;
+  // GError to catch errors
   GError *th_err;
+  // Thread to switch to
   GThread *thread = NULL;
+  // Character to terminal keys from
   char ch = 0;
 
-  enable_raw_mode();
+  enable_raw_mode(orig_term_attrs);
 
   g_print("MAIN: Starting thread\n");
   // Thread Setup
   thread = g_thread_try_new("thread-test",
                             (GThreadFunc)run_thread,
-                            (gpointer*)NULL,
+                            &stop_flag,
                             &th_err);
+  // If in any case the thread doesn't start
   if (thread == NULL) {
     g_printerr("Error in thread creation: %s", th_err->message);
+    return EXIT_FAILURE;
   }
 
   g_print("To stop gracefully, Click 'q'\n");
   while (read(STDIN_FILENO, &ch, 1 ) == 1 && ch != 'q');
+  stop_flag = TRUE;
 
-  g_print("MAIN: Waiting for other threads to finish\n");
+  g_print("\nMAIN: Waiting for other threads to finish\n");
   g_thread_join(thread);
   g_print("MAIN: Thread finished.\n");
 }
