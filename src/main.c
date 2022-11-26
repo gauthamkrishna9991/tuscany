@@ -22,6 +22,7 @@
  *
  * SPDX-License-Identifier: MIT
  */
+
 #include "terminal.h"
 
 #include <glib.h>
@@ -61,6 +62,7 @@ main (gint   argc,
                             (GThreadFunc)run_thread,
                             &stop_flag,
                             &th_err);
+
   // If in any case the thread doesn't start
   if (thread == NULL) {
     g_printerr("Error in thread creation: %s", th_err->message);
