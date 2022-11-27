@@ -5,7 +5,8 @@ tuscany_sources = [
 
 tuscany_deps = [
   dependency('glib-2.0'),
-  dependency('libinput')
+  dependency('libinput'),
+  dependency('gio-2.0')
 ]
 
 executable('tuscany', tuscany_sources,
